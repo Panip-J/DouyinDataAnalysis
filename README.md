@@ -166,9 +166,3 @@ run_crawler.bat <sec_uid_1> <sec_uid_2>
 - 热词云数据。
 
 它用于展示扩展查询方式，不是当前前端的唯一后端入口。
-
-## 开发说明
-
-- 当前主链路为 `crawl → MongoDB → backend/app.py → src/`；
-- `nosql-work/` 为早期实验页面，仅作历史参考；
-- 课程设计中规划的 Service/DAO/Model 分层和部分分析模块，只有在实际代码中落地的部分才纳入当前运行说明。
