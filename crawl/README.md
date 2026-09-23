@@ -1,32 +1,77 @@
-# crawl
+# Crawler Module
 
-抖音数据采集模块，负责将热搜、用户和视频数据清洗后写入 MongoDB。
+The `crawl` package collects Douyin hot-search, user-profile, and video data, normalizes the responses, and persists the results through the project’s MongoDB data-access layer.
 
-## 文件
+## Responsibilities
 
-- `douyin_hot_crawl.py`：热搜采集、重试/退避和周期执行；
-- `douyin_user_crawl.py`：用户资料解析和 MongoDB 持久化；
-- `douyin_video_crawl.py`：视频详情解析和 MongoDB 持久化；
-- `douyin_video_crawl_legacy.py`：旧版单视频 CSV 导出脚本，仅保留作历史参考；
-- `run_multiple_users.py`：批量用户采集入口；
-- `insert_mock_data.py`：开发测试数据填充脚本。
-
-## 运行示例
-
-从项目根目录执行：
-
-```bash
-python -m crawl.douyin_hot_crawl
-python crawl/douyin_user_crawl.py <sec_uid>
-python -m crawl.run_multiple_users <sec_uid_1> <sec_uid_2>
-python crawl/douyin_video_crawl.py
+```text
+External endpoints
+      ↓
+Request / retry / response parsing
+      ↓
+Normalized crawler records
+      ↓
+MongoDB persistence via backend.douyin_db
 ```
 
-爬虫从根目录 `.env` 读取 `DOUYIN_COOKIE`，源码不保存平台 Cookie。
+The crawlers are intentionally kept separate from the API and frontend layers so that collection jobs can be run independently from the web service.
 
-## 与本地早期 Crawl 副本的关系
+## Modules
 
-- 早期热搜脚本主要输出 CSV；当前版本封装为数据库采集流程，并增加重试/退避；
-- 早期用户脚本是交互式 CSV 导出；当前版本增加结构化解析、日志、数据库写入和批量入口；
-- 早期视频脚本与当前 `douyin_video_crawl_legacy.py` 内容一致；当前主版本额外写入 MongoDB；
-- 早期目录中的 B 站爬虫和历史 CSV 未并入本项目。
+| Module | Responsibility |
+|---|---|
+| `douyin_hot_crawl.py` | Periodically collects hot-search records, applies retry/backoff handling, normalizes timestamps and fields, and stores records in MongoDB. |
+| `douyin_user_crawl.py` | Collects and normalizes user profile data, including identity, profile, follower, following, likes and video statistics. |
+| `douyin_video_crawl.py` | Collects video metadata and engagement statistics, then persists the normalized record to MongoDB. |
+| `run_multiple_users.py` | Batch entry point for collecting multiple user profiles. |
+| `insert_mock_data.py` | Inserts development fixtures for local testing. |
+| `douyin_video_crawl_legacy.py` | Legacy single-video CSV exporter retained for compatibility; use `douyin_video_crawl.py` for the MongoDB pipeline. |
+
+## Configuration
+
+Create a local environment file from the project template:
+
+```bash
+copy .env.example .env
+```
+
+The crawlers read the following value when an authenticated request is required:
+
+```dotenv
+DOUYIN_COOKIE=your-local-cookie
+```
+
+Credentials and session cookies must remain in local environment files. Do not commit them to the repository or include them in issue reports and pull requests.
+
+## Usage
+
+Run commands from the repository root:
+
+```bash
+# Collect hot-search data; the process continues until interrupted.
+python -m crawl.douyin_hot_crawl
+
+# Collect one user profile.
+python crawl/douyin_user_crawl.py <sec_uid>
+
+# Collect multiple user profiles.
+python -m crawl.run_multiple_users <sec_uid_1> <sec_uid_2>
+
+# Collect one video and persist it to MongoDB.
+python crawl/douyin_video_crawl.py
+
+# Insert local fixture data for development.
+python crawl/insert_mock_data.py
+```
+
+The MongoDB service must be running before starting a crawler. See the repository root README for Docker Compose and environment setup.
+
+## Data handling
+
+- Response payloads are treated as external input and normalized before persistence.
+- MongoDB indexes and collection setup are defined by the backend data-access and initialization scripts.
+- Crawler failures are logged and reported without committing response credentials or session data.
+
+## Responsible use
+
+Use only data and endpoints that you are authorized to access, and comply with the target platform’s terms, rate limits, and applicable laws. This repository is intended for local development and coursework demonstrations, not for bypassing access controls or operating an unrestricted production crawler.
